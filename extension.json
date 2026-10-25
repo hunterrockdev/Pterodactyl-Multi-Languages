@@ -1,0 +1,21 @@
+{
+    "$schema": "../sdk/manifest.schema.json",
+    "id": "multi-language",
+    "name": "Multi-Language",
+    "version": "1.0.0",
+    "description": "Comprehensive multi-language & localization extension supporting 11 languages with header flag dropdown, account preferences, and admin defaults.",
+    "author": "Hunterrock",
+    "icon": "languages",
+    "provider": "Hunterrock\\MultiLanguage\\MultiLanguageServiceProvider",
+    "autoload": {
+        "Hunterrock\\MultiLanguage\\": "src/server"
+    },
+    "ui": {
+        "entry": "dist/client.js",
+        "mode": "native",
+        "prefix": "ml"
+    },
+    "requires": {
+        "sdk": ">=2.0.0-beta.5 <3.0"
+    }
+}

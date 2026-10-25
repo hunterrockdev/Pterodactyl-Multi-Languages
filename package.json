@@ -1,0 +1,26 @@
+{
+    "name": "pterodactyl-multi-language",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "pack": "npm run build && php pack.php",
+        "dev": "vite build --watch",
+        "typecheck": "tsc --noEmit"
+    },
+    "devDependencies": {
+        "@pterodactyl/sdk": "file:../sdk",
+        "@tanstack/react-query": "^5.67.2",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "@types/react": "^19.0.0",
+        "@types/react-dom": "^19.0.0",
+        "typescript": "^5.8.0",
+        "vite": "^6.2.0",
+        "tailwindcss": "^4.0.12",
+        "@tailwindcss/postcss": "^4.0.12",
+        "postcss": "^8.5.3",
+        "lucide-react": "^1.16.0"
+    }
+}

@@ -1,0 +1,32 @@
+/*
+ * Tailwind CSS for the pterodactyl-multi-language extension.
+ * Prefix "ml" keeps utilities namespaced: ml:flex, ml:rounded, etc.
+ */
+@import 'tailwindcss/theme.css' layer(theme) prefix(ml);
+@import 'tailwindcss/utilities.css' layer(utilities) prefix(ml);
+@import '../../../sdk/theme.css';
+@source './**/*.{ts,tsx}';
+
+/* RTL support for Arabic */
+html[dir="rtl"] .ml-language-dropdown [class*="right-0"] {
+    right: auto !important;
+    left: 0 !important;
+}
+
+/* Custom scrollbar for language list */
+.scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(150, 150, 150, 0.25);
+    border-radius: 9999px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: rgba(150, 150, 150, 0.45);
+}
