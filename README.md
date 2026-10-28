@@ -70,7 +70,7 @@ The extension ships with complete dictionaries for 11 languages across all core 
 ## 📦 Installation
 
 ### Option 1: Web Installer (Recommended)
-1. Download **[multi-language-1.0.1.pteroext](https://github.com/hunterrockdev/Pterodactyl-Multi-Languages/releases/download/latest/multi-language-1.0.1.pteroext)**.
+1. Download **[multi-language-1.0.1.pteroext](https://github.com/hunterrockdev/Pterodactyl-Multi-Languages/releases/latest/download/multi-language-1.0.1.pteroext)**.
 2. Go to your Pterodactyl Admin panel: **Admin ➔ Extensions** (`/admin/extensions`).
 3. Click the **"Install"** button in the top right.
 4. Upload the downloaded `.pteroext` file.
@@ -79,7 +79,7 @@ The extension ships with complete dictionaries for 11 languages across all core 
 ### Option 2: Artisan CLI
 Download and install directly from your Pterodactyl server terminal:
 ```bash
-curl -Lo /tmp/multi-language-1.0.1.pteroext https://github.com/hunterrockdev/Pterodactyl-Multi-Languages/releases/download/latest/multi-language-1.0.1.pteroext
+curl -Lo /tmp/multi-language-1.0.1.pteroext https://github.com/hunterrockdev/Pterodactyl-Multi-Languages/releases/latest/download/multi-language-1.0.1.pteroext
 php artisan p:extension:install /tmp/multi-language-1.0.1.pteroext
 ```
 
