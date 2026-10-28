@@ -4,12 +4,28 @@ import { getDictionary, getLowerDictionary } from './dictionary';
 
 const STORAGE_KEY = 'ptero:language';
 
+const ADMIN_LANGUAGE_MAP: Record<string, string> = {
+    en: '🇬🇧 English',
+    tr: '🇹🇷 Türkçe',
+    de: '🇩🇪 Deutsch',
+    ru: '🇷🇺 Русский',
+    ar: '🇸🇦 العربية',
+    es: '🇪🇸 Español',
+    fr: '🇫🇷 Français',
+    it: '🇮🇹 Italiano',
+    'pt-BR': '🇧🇷 Português (BR)',
+    nl: '🇳🇱 Nederlands',
+    pl: '🇵🇱 Polski',
+};
+
 type LanguageChangeListener = (lang: LanguageDefinition) => void;
 const listeners = new Set<LanguageChangeListener>();
 
 let currentLanguageCode = 'en';
 let observer: MutationObserver | null = null;
 let rafScheduled = false;
+let panelSettingsBound = false;
+let lastSiteLocale: string | undefined = undefined;
 
 export function getActiveLanguage(): LanguageDefinition {
     return getLanguage(currentLanguageCode);
@@ -28,6 +44,105 @@ function notifyListeners(lang: LanguageDefinition) {
             console.error('Error in language listener:', e);
         }
     });
+
+    if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+            new CustomEvent('ptero:language-changed', {
+                detail: { code: lang.code, language: lang },
+            })
+        );
+        window.dispatchEvent(
+            new CustomEvent('ptero:sc:language-changed', {
+                detail: lang.code,
+            })
+        );
+    }
+}
+
+export interface PteroMultiLangBridge {
+    getLanguage: () => string;
+    getLanguageInfo: () => LanguageDefinition;
+    onLanguageChange: (callback: (lang: LanguageDefinition) => void) => () => void;
+}
+
+/**
+ * Exposes `window.PteroMultiLang` so other extensions can read the active
+ * panel language and listen for real-time language changes.
+ */
+function registerGlobalBridge(): void {
+    if (typeof window === 'undefined') return;
+
+    (window as any).PteroMultiLang = {
+        getLanguage: () => currentLanguageCode,
+        getLanguageInfo: () => getActiveLanguage(),
+        onLanguageChange: (callback: (lang: LanguageDefinition) => void) => subscribeToLanguageChange(callback),
+    } satisfies PteroMultiLangBridge;
+}
+
+/**
+ * Integrates with Pterodactyl's native /admin/settings ("Default Language" / "VARSAYILAN DİL")
+ * and /admin/users language selectors via React Query cache.
+ */
+function setupPanelSettingsSync(): void {
+    if (panelSettingsBound || typeof window === 'undefined') return;
+    panelSettingsBound = true;
+
+    lastSiteLocale = (window as any)?.SiteConfiguration?.locale;
+
+    try {
+        const cache = queryClient.getQueryCache();
+        cache.subscribe((event) => {
+            if (event.type !== 'added' && event.type !== 'updated') {
+                return;
+            }
+
+            const queryKey = event.query.queryKey;
+            if (!Array.isArray(queryKey) || queryKey.length === 0) {
+                return;
+            }
+
+            // 1. Augment adminListLanguages query so /admin/settings and /admin/users
+            // always display all 11 languages with flags in the exact LANGUAGE_LIST order.
+            const firstKey = queryKey[0] as any;
+            if (firstKey && typeof firstKey === 'object' && firstKey._id === 'adminListLanguages') {
+                const currentData = event.query.state.data as Record<string, string> | undefined;
+                if (currentData && typeof currentData === 'object') {
+                    const currentKeys = Object.keys(currentData);
+                    const targetKeys = Object.keys(ADMIN_LANGUAGE_MAP);
+                    const isSameOrder =
+                        targetKeys.every((k, i) => currentKeys[i] === k) &&
+                        currentData.tr === ADMIN_LANGUAGE_MAP.tr;
+                    if (!isSameOrder) {
+                        queryClient.setQueryData(queryKey, {
+                            ...ADMIN_LANGUAGE_MAP,
+                            ...Object.fromEntries(
+                                Object.entries(currentData).filter(([k]) => !(k in ADMIN_LANGUAGE_MAP)),
+                            ),
+                        });
+                    }
+                }
+                return;
+            }
+
+            // 2. React immediately when admin saves "Default Language" on /admin/settings
+            if (queryKey[0] === 'bootstrap' && queryKey[1] === 'site-settings') {
+                const siteData = event.query.state.data as { locale?: string } | undefined;
+                const newLocale = siteData?.locale;
+                if (newLocale && typeof newLocale === 'string' && newLocale !== lastSiteLocale && LANGUAGES[newLocale]) {
+                    lastSiteLocale = newLocale;
+                    if ((window as any).SiteConfiguration) {
+                        (window as any).SiteConfiguration.locale = newLocale;
+                    }
+                    void changeLanguage(newLocale, true);
+                    http.post('/api/admin/extensions/multi-language/settings', {
+                        default_language: newLocale,
+                    }).catch(() => { });
+                }
+            }
+        });
+    } catch {
+        // queryClient not initialized yet
+    }
 }
 
 /**
@@ -35,17 +150,30 @@ function notifyListeners(lang: LanguageDefinition) {
  */
 export function initLanguage(defaultFromConfig?: string): void {
     const stored = typeof window !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null;
-    const candidate = stored || defaultFromConfig || 'en';
+    const siteLocale = typeof window !== 'undefined' ? (window as any)?.SiteConfiguration?.locale : undefined;
+    const effectiveDefault = (siteLocale && siteLocale !== 'en' && LANGUAGES[siteLocale])
+        ? siteLocale
+        : (defaultFromConfig || siteLocale || 'en');
+    const candidate = stored || effectiveDefault || 'en';
     const lang = getLanguage(candidate);
 
     currentLanguageCode = lang.code;
     applyHtmlAttributes(lang);
 
     if (typeof window !== 'undefined') {
-        // 1. Start observing DOM mutations immediately
+        // 1. Expose global cross-extension SDK (window.PteroMultiLang)
+        registerGlobalBridge();
+
+        // 2. Bind native /admin/settings Default Language integration
+        setupPanelSettingsSync();
+
+        // 3. Start observing DOM mutations immediately
         setupMutationObserver();
 
-        // 2. Perform translation passes during initial page load & React hydration
+        // 4. Broadcast initial active language to any listening extensions
+        notifyListeners(lang);
+
+        // 5. Perform translation passes during initial page load & React hydration
         const intervals = [0, 50, 150, 300, 600, 1000, 1800, 3000];
         intervals.forEach((delay) => {
             setTimeout(() => {
@@ -60,6 +188,7 @@ function applyHtmlAttributes(lang: LanguageDefinition): void {
         document.documentElement.lang = lang.code;
         document.documentElement.dir = lang.dir || 'ltr';
         document.documentElement.setAttribute('data-ptero-lang', lang.code);
+        document.documentElement.setAttribute('data-sc-lang', lang.code);
     }
 }
 

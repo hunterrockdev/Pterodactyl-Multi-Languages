@@ -2,7 +2,7 @@
     "$schema": "../sdk/manifest.schema.json",
     "id": "multi-language",
     "name": "Multi-Language",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "Comprehensive multi-language & localization extension supporting 11 languages with header flag dropdown, account preferences, and admin defaults.",
     "author": "Hunterrock",
     "icon": "languages",

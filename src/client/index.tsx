@@ -6,11 +6,15 @@ import AccountLanguageCard from './components/AccountLanguageCard';
 
 export default definePterodactylExtension({
     setup({ config, slots }) {
-        const defaultLang = typeof config?.default_language === 'string' ? config.default_language : 'en';
+        const siteLocale = typeof (window as any)?.SiteConfiguration?.locale === 'string'
+            ? (window as any).SiteConfiguration.locale
+            : undefined;
+        const configLang = typeof config?.default_language === 'string' ? config.default_language : undefined;
+        const defaultLang = (siteLocale && siteLocale !== 'en') ? siteLocale : (configLang || siteLocale || 'en');
         const showHeader = config?.show_header_dropdown !== false;
         const allowUserOverride = config?.allow_user_override !== false;
 
-        // 1. Initialize active language and sync HTML attributes
+        // 1. Initialize active language and sync HTML attributes & /admin/settings
         initLanguage(defaultLang);
 
         // 2. Register Header Language Switcher Dropdown (top navigation bar)
